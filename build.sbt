@@ -28,3 +28,4 @@ lazy val root = project
     ),
   )
 
+version := "0.0.3"
