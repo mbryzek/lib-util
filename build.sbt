@@ -6,8 +6,6 @@ ThisBuild / scalaVersion := "3.4.2"
 
 ThisBuild / javacOptions ++= Seq("-source", "17", "-target", "17")
 
-crossScalaVersions := Seq("2.13.14", "3.4.2")
-
 lazy val allScalacOptions = Seq(
   "-feature",
   "-Xfatal-warnings",
