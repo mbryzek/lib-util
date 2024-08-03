@@ -21,8 +21,8 @@ lazy val root = project
     testOptions += Tests.Argument("-oDF"),
     scalacOptions ++= allScalacOptions,
     libraryDependencies ++= Seq(
-      "commons-codec" % "commons-codec" % "1.17.0",
+      "commons-codec" % "commons-codec" % "1.17.1",
       "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
     ),
   )
-version := "0.0.7"
+version := "0.0.8"
