@@ -59,7 +59,18 @@ case class Random() {
 
   def nonAmbiguousAlphaUpper(length: Int): String = gen(UppercaseLetters.nonAmbiguous, length)
   def nonAmbiguousNumber(length: Int): String = gen(Numbers.nonAmbiguous, length)
-  def nonAmbiguous(length: Int): String = gen(LettersAndNumbers.nonAmbiguous, length)
+
+  /** First character is guaranteed to be a letter, the rest are letters or numbers
+    */
+  def nonAmbiguous(length: Int): String = {
+    assert(length >= 1, s"Length '$length' must be >= 1'")
+    val first = nonAmbiguousAlphaUpper(1)
+    if (length == 1) {
+      first
+    } else {
+      first + gen(LettersAndNumbers.nonAmbiguous, length - 1)
+    }
+  }
 
   private def gen(candidates: Seq[String], length: Int): String = {
     assert(length >= 1, s"Length '$length' must be >= 1'")
