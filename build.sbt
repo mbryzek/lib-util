@@ -29,6 +29,8 @@ lazy val root = project
     scalacOptions ++= allScalacOptions,
     libraryDependencies ++= Seq(
       "commons-codec" % "commons-codec" % "1.18.0",
+      "joda-time" % "joda-time" % "2.14.0",
+      "org.typelevel" %% "cats-core" % "2.12.0",
       "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
     ),
   )
