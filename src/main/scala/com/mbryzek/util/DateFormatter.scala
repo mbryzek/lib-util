@@ -12,6 +12,13 @@ object DateFormatter {
   private val textDateFormat = DateTimeFormat.forPattern("MMM d, yyyy")
   private val yyyyMmDd = DateTimeFormat.forPattern("yyyy-MM-dd")
 
+  private val longDateFormatter = DateTimeFormat.forPattern("EEEE, MMMM d, yyyy")
+  private val timeFormatter = DateTimeFormat.forPattern("h:mm a")
+
+  def longDateAndTime(timestamp: DateTime): String = {
+    longDateFormatter.print(timestamp) + ", " + timeFormatter.print(timestamp)
+  }
+
   def short(timestamp: DateTime): String = short(timestamp.toLocalDate)
   def short(timestamp: LocalDate): String = {
     format(mmDdYYYY.print(timestamp))
