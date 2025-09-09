@@ -4,7 +4,7 @@ import org.joda.time.DateTime
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-class DateDateFormatterSpec extends AnyWordSpec with Matchers {
+class DateFormatterSpec extends AnyWordSpec with Matchers {
 
   private val april82021 = DateTime.parse("2021-04-08T10:45:53.165-04:00")
 
