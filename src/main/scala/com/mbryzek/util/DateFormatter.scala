@@ -1,7 +1,7 @@
 package com.mbryzek.util
 
 import org.joda.time.format.{DateTimeFormat, DateTimeFormatter}
-import org.joda.time.{DateTime, LocalDate}
+import org.joda.time.{DateTime, DateTimeZone, LocalDate}
 
 import scala.annotation.tailrec
 
@@ -17,6 +17,16 @@ object DateFormatter {
 
   def longDateAndTime(timestamp: DateTime): String = {
     longDateFormatter.print(timestamp) + ", " + timeFormatter.print(timestamp)
+  }
+
+  def longDateAndTime(timestamp: DateTime, timeZone: DateTimeZone): String = {
+    val localTime = timestamp.withZone(timeZone)
+    val timeZoneAbbrev = getTimeZoneAbbreviation(timeZone, timestamp)
+    longDateFormatter.print(localTime) + ", " + timeFormatter.print(localTime) + " " + timeZoneAbbrev
+  }
+
+  private def getTimeZoneAbbreviation(timeZone: DateTimeZone, timestamp: DateTime): String = {
+    timeZone.getShortName(timestamp.getMillis)
   }
 
   def short(timestamp: DateTime): String = short(timestamp.toLocalDate)
