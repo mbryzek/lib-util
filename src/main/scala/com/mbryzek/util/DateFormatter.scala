@@ -13,10 +13,22 @@ object DateFormatter {
   private val yyyyMmDd = DateTimeFormat.forPattern("yyyy-MM-dd")
 
   private val longDateFormatter = DateTimeFormat.forPattern("EEEE, MMMM d, yyyy")
+  private val shortDateNoYearFormatter = DateTimeFormat.forPattern("EEE MMM d")
+  private val shortDateWithYearFormatter = DateTimeFormat.forPattern("EEE MMM d, yyyy")
   private val timeFormatter = DateTimeFormat.forPattern("h:mm a")
 
   def longDateAndTime(timestamp: DateTime): String = {
-    longDateFormatter.print(timestamp) + ", " + timeFormatter.print(timestamp)
+    longDateFormatter.print(timestamp) + " @ " + timeFormatter.print(timestamp)
+  }
+
+  def shortDateAndTime(timestamp: DateTime): String = {
+    val currentYear = DateTime.now.withZone(timestamp.getZone).getYear
+    val formatter = if (currentYear == timestamp.getYear) {
+      shortDateNoYearFormatter
+    } else {
+      shortDateWithYearFormatter
+    }
+    formatter.print(timestamp) + " @ " + timeFormatter.print(timestamp)
   }
 
   def longDateAndTime(timestamp: DateTime, timeZone: DateTimeZone): String = {

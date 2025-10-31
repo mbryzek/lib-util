@@ -24,4 +24,21 @@ class DateFormatterSpec extends AnyWordSpec with Matchers {
   "monthYear" in {
     DateFormatter.monthYear(april82021) mustBe "Apr 2021"
   }
+
+  "longDateAndTime" in {
+    DateFormatter.longDateAndTime(april82021) mustBe "Thursday, April 8, 2021 @ 10:45 AM"
+  }
+
+  "shortDateAndTime" must {
+    "current year" in {
+      val f = DateFormatter.shortDateAndTime(april82021.withYear(DateTime.now.getYear))
+      // Drop the day of week as it changes year to year. Testing mainly that the year is not here
+      val parts = f.split("\\s+").toList
+      parts.head.length mustBe 3
+      parts.drop(1).mkString(" ") mustBe "Apr 8 @ 10:45 AM"
+    }
+    "other year" in {
+      DateFormatter.shortDateAndTime(april82021) mustBe "Thu Apr 8, 2021 @ 10:45 AM"
+    }
+  }
 }
