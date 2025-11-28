@@ -2,7 +2,7 @@ name := "lib-util"
 
 organization := "com.mbryzek"
 
-ThisBuild / scalaVersion := "3.7.3"
+ThisBuild / scalaVersion := "3.7.4"
 
 ThisBuild / javacOptions ++= Seq("-source", "17", "-target", "17")
 
