@@ -1,4 +1,4 @@
-package com.mbryzek.util
+package com.bryzek.util
 
 import org.joda.time.LocalDate
 import org.joda.time.DateTimeConstants

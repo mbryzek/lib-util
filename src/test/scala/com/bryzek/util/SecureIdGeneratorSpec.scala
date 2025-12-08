@@ -1,4 +1,4 @@
-package com.mbryzek.util
+package com.bryzek.util
 
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec

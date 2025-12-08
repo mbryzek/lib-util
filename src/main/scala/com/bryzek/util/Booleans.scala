@@ -1,4 +1,4 @@
-package com.mbryzek.util
+package com.bryzek.util
 
 object Booleans {
 

@@ -1,4 +1,4 @@
-package com.mbryzek.util
+package com.bryzek.util
 
 case class SecureIdGenerator(prefix: String) {
 
