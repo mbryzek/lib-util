@@ -2,7 +2,7 @@ name := "lib-util"
 
 organization := "com.bryzek"
 
-version := "0.0.20"
+version := "0.0.21"
 
 ThisBuild / javacOptions ++= Seq("-source", "17", "-target", "17")
 
