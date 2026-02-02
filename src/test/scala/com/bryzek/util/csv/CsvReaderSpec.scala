@@ -42,10 +42,11 @@ Jane,jane@example.com"""
       val result = reader.read { (builder, row) =>
         val _ = row.getOptionalString("name") // Use row to avoid warning
         rowCount += 1
-        builder
+        builder.withSuccess
       }
       rowCount mustBe 2
       result.errors mustBe empty
+      result.numberSuccessful mustBe 2
     }
 
     "skip empty lines" in {

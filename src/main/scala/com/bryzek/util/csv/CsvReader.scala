@@ -45,15 +45,28 @@ object CsvReader {
 
 }
 
-case class CsvResult(errors: Seq[String])
+case class CsvResult(numberSuccessful: Long, errors: Seq[CsvError]) {
+  def numberErrors: Int = CsvResult.errorsByLineNumber(errors).size
+}
+
+object CsvResult {
+  def errorsByLineNumber(errors: Seq[CsvError]): Map[Int, String] = errors.groupBy(_.lineNumber).map { case (l, all) =>
+    l -> all.map(_.message).distinct.mkString("; ")
+  }
+}
 
 case class CsvError(lineNumber: Int, message: String)
 
 case class CsvResultBuilder(
+  numberSuccessful: Long,
   headers: Seq[String],
-  lineNumber: Int = 2,
+  lineNumber: Int = 2, // line 2 contains the headers
   errors: Seq[CsvError] = Nil
 ) {
+
+  def withSuccess: CsvResultBuilder = {
+    this.copy(numberSuccessful = numberSuccessful + 1)
+  }
 
   def withLineNumber(lineNumber: Int): CsvResultBuilder = {
     this.copy(lineNumber = lineNumber)
@@ -75,9 +88,8 @@ case class CsvResultBuilder(
 
   def build(): CsvResult = {
     CsvResult(
-      errors = errors.map { e =>
-        s"Line ${e.lineNumber}: ${e.message}"
-      }
+      numberSuccessful = numberSuccessful,
+      errors = errors
     )
   }
 
@@ -88,17 +100,21 @@ case class CsvReader(
   source: Either[String, File]
 ) {
 
-  private def createIterator(): NonEmptyIterator = {
-    val reader = source match {
+  private def createReader(): tototoshi.CSVReader = {
+    source match {
       case Left(content) => tototoshi.CSVReader.open(new StringReader(content))(using defaultCSVFormat)
       case Right(file) => tototoshi.CSVReader.open(file)(using defaultCSVFormat)
     }
-    NonEmptyIterator(settings, reader.iterator)
   }
 
   def headers(): Seq[String] = {
-    val it = createIterator()
-    readHeaders(it)
+    val reader = createReader()
+    try {
+      val it = NonEmptyIterator(settings, reader.iterator)
+      readHeaders(it)
+    } finally {
+      reader.close()
+    }
   }
 
   private def readHeaders(it: NonEmptyIterator): Seq[String] = {
@@ -110,21 +126,26 @@ case class CsvReader(
   }
 
   def read(eachRow: (CsvResultBuilder, CsvRow) => CsvResultBuilder): CsvResult = {
-    val it = createIterator()
-    val headers = readHeaders(it)
+    val reader = createReader()
+    try {
+      val it = NonEmptyIterator(settings, reader.iterator)
+      val headers = readHeaders(it)
 
-    var builder = CsvResultBuilder(headers = headers)
-    while (it.hasNext) {
-      val line = it.next()
-      builder = eachRow(
-        builder.withLineNumber(it.lineNumber),
-        CsvRow(
-          headers.zipWithIndex.map { case (k, i) =>
-            k -> line.lift(i).getOrElse("")
-          }.toMap
+      var builder = CsvResultBuilder(numberSuccessful = 0, headers = headers)
+      while (it.hasNext) {
+        val line = it.next()
+        builder = eachRow(
+          builder.withLineNumber(it.lineNumber),
+          CsvRow(
+            headers.zipWithIndex.map { case (k, i) =>
+              k -> line.lift(i).getOrElse("")
+            }.toMap
+          )
         )
-      )
+      }
+      builder.build()
+    } finally {
+      reader.close()
     }
-    builder.build()
   }
 }

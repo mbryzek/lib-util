@@ -140,6 +140,39 @@ case class CsvRow(original: Map[String, String]) {
     }
   }
 
+  def getOptionalLocalDateMMDDYY(field: String): ValidationResult[Option[LocalDate]] = {
+    getOptionalLocalDate(field)(using toLocalDateFromMMDDYYY)
+  }
+
+  def getRequiredLocalDateMMDDYY(field: String): ValidationResult[LocalDate] = {
+    getRequiredLocalDate(field)(using toLocalDateFromMMDDYYY)
+  }
+
+  private def toLocalDateFromMMDDYYY(value: String): LocalDate = {
+    value.trim.split("\\/").toList.map(_.trim) match {
+      case month :: day :: year :: Nil =>
+        val y = if (year.forall(_.isDigit)) {
+          maybePrependCentury(year.toInt)
+        } else {
+          year
+        }
+        ISODateTimeFormat.yearMonthDay.parseLocalDate(s"$y-$month-$day")
+      case _ => sys.error(s"Expected mm/dd/yy")
+    }
+  }
+
+  /** Parses year taking assumption that any missing digits come from current year. Example: In the year 2020, a value
+    * of '34' would be interpreted as '2034'
+    */
+  private def maybePrependCentury(year: Int): Int = {
+    val current = LocalDate.now.getYear
+    if (year.toString.length < current.toString.length) {
+      (current.toString.dropRight(current.toString.length - year.toString.length) + year.toString).toInt
+    } else {
+      year
+    }
+  }
+
   def getOptionalBoolean(field: String): ValidationResult[Option[Boolean]] = {
     _getOptionalString(field) match {
       case None => None.validNec
