@@ -140,11 +140,11 @@ case class CsvRow(original: Map[String, String]) {
     }
   }
 
-  def getOptionalLocalDateMMDDYY(field: String): ValidationResult[Option[LocalDate]] = {
+  def getOptionalLocalDateMMDDYYYY(field: String): ValidationResult[Option[LocalDate]] = {
     getOptionalLocalDate(field)(using toLocalDateFromMMDDYYY)
   }
 
-  def getRequiredLocalDateMMDDYY(field: String): ValidationResult[LocalDate] = {
+  def getRequiredLocalDateMMDDYYYY(field: String): ValidationResult[LocalDate] = {
     getRequiredLocalDate(field)(using toLocalDateFromMMDDYYY)
   }
 
@@ -157,7 +157,7 @@ case class CsvRow(original: Map[String, String]) {
           year
         }
         ISODateTimeFormat.yearMonthDay.parseLocalDate(s"$y-$month-$day")
-      case _ => sys.error(s"Expected mm/dd/yy")
+      case _ => sys.error(s"Expected mm/dd/yyyy but found ${value.trim}")
     }
   }
 

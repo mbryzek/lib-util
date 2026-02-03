@@ -19,12 +19,12 @@ object Base64Util {
     new String(decodeBytes(value.getBytes(Utf8)), Utf8)
   }
 
-  def decodeBytes(bytes: String): Array[Byte] = {
-    decodeBytes(bytes.getBytes(Utf8))
+  def decodeBytes(value: String): Array[Byte] = {
+    decodeBytes(value.getBytes(Utf8))
   }
 
-  def decodeBytes(bytes: Array[Byte]): Array[Byte] = {
-    Base64.decodeBase64(bytes)
+  def decodeBytes(value: Array[Byte]): Array[Byte] = {
+    Base64.decodeBase64(value)
   }
 
 }
