@@ -42,7 +42,7 @@ case class CsvRow(original: Map[String, String]) {
   ): ValidationResult[String] = {
     _getOptionalString(field) match {
       case None =>
-        if (data.isDefinedAt(field)) {
+        if (data.isDefinedAt(formatKey(field))) {
           errorMessage(field, "cannot be blank").invalidNec
         } else {
           errorMessage(field, "is missing").invalidNec
