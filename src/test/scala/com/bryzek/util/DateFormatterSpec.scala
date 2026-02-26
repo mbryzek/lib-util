@@ -7,6 +7,7 @@ import org.scalatest.wordspec.AnyWordSpec
 class DateFormatterSpec extends AnyWordSpec with Matchers {
 
   private val april82021 = DateTime.parse("2021-04-08T10:45:53.165-04:00")
+  private val april82021OnTheHour = DateTime.parse("2021-04-08T10:00:00.000-04:00")
 
   "short" must {
     "strip zeros" in {
@@ -25,8 +26,13 @@ class DateFormatterSpec extends AnyWordSpec with Matchers {
     DateFormatter.monthYear(april82021) mustBe "Apr 2021"
   }
 
-  "longDateAndTime" in {
-    DateFormatter.longDateAndTime(april82021) mustBe "Thursday, April 8, 2021 @ 10:45 AM"
+  "longDateAndTime" must {
+    "with non-zero minutes" in {
+      DateFormatter.longDateAndTime(april82021) mustBe "Thursday, April 8, 2021 @ 10:45 AM"
+    }
+    "with zero minutes omits :00" in {
+      DateFormatter.longDateAndTime(april82021OnTheHour) mustBe "Thursday, April 8, 2021 @ 10AM"
+    }
   }
 
   "shortDateAndTime" must {
@@ -39,6 +45,9 @@ class DateFormatterSpec extends AnyWordSpec with Matchers {
     }
     "other year" in {
       DateFormatter.shortDateAndTime(april82021) mustBe "Thu Apr 8, 2021 @ 10:45 AM"
+    }
+    "zero minutes omits :00" in {
+      DateFormatter.shortDateAndTime(april82021OnTheHour) mustBe "Thu Apr 8, 2021 @ 10AM"
     }
   }
 }

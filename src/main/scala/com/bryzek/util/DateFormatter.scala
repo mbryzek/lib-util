@@ -16,9 +16,15 @@ object DateFormatter {
   private val shortDateNoYearFormatter = DateTimeFormat.forPattern("EEE MMM d")
   private val shortDateWithYearFormatter = DateTimeFormat.forPattern("EEE MMM d, yyyy")
   private val timeFormatter = DateTimeFormat.forPattern("h:mm a")
+  private val timeFormatterNoMinutes = DateTimeFormat.forPattern("ha")
+
+  def formatTime(timestamp: DateTime): String = {
+    if (timestamp.getMinuteOfHour == 0) timeFormatterNoMinutes.print(timestamp)
+    else timeFormatter.print(timestamp)
+  }
 
   def longDateAndTime(timestamp: DateTime): String = {
-    longDateFormatter.print(timestamp) + " @ " + timeFormatter.print(timestamp)
+    longDateFormatter.print(timestamp) + " @ " + formatTime(timestamp)
   }
 
   def shortDateAndTime(timestamp: DateTime): String = {
@@ -28,13 +34,13 @@ object DateFormatter {
     } else {
       shortDateWithYearFormatter
     }
-    formatter.print(timestamp) + " @ " + timeFormatter.print(timestamp)
+    formatter.print(timestamp) + " @ " + formatTime(timestamp)
   }
 
   def longDateAndTime(timestamp: DateTime, timeZone: DateTimeZone): String = {
     val localTime = timestamp.withZone(timeZone)
     val timeZoneAbbrev = getTimeZoneAbbreviation(timeZone, timestamp)
-    longDateFormatter.print(localTime) + ", " + timeFormatter.print(localTime) + " " + timeZoneAbbrev
+    longDateFormatter.print(localTime) + ", " + formatTime(localTime) + " " + timeZoneAbbrev
   }
 
   private def getTimeZoneAbbreviation(timeZone: DateTimeZone, timestamp: DateTime): String = {
