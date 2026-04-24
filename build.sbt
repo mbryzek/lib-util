@@ -21,7 +21,7 @@ ThisBuild / sonatypeCredentialHost := "central.sonatype.com"
 ThisBuild / sonatypeRepository := "https://central.sonatype.com/api/v1/publisher"
 ThisBuild / publishMavenStyle := true
 
-ThisBuild / scalaVersion := "3.8.1"
+ThisBuild / scalaVersion := "3.8.3"
 
 lazy val allScalacOptions = Seq(
   "-feature",
@@ -46,7 +46,7 @@ lazy val root = project
     libraryDependencies ++= Seq(
       "com.github.tototoshi" %% "scala-csv" % "2.0.0",
       "commons-codec" % "commons-codec" % "1.21.0",
-      "joda-time" % "joda-time" % "2.14.0",
+      "joda-time" % "joda-time" % "2.14.1",
       "org.typelevel" %% "cats-core" % "2.12.0",
       "org.playframework" %% "play-json" % "3.0.6",
       "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
