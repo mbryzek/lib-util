@@ -46,7 +46,7 @@ lazy val root = project
     libraryDependencies ++= Seq(
       "com.github.tototoshi" %% "scala-csv" % "2.0.0",
       "commons-codec" % "commons-codec" % "1.22.0",
-      "joda-time" % "joda-time" % "2.14.1",
+      "joda-time" % "joda-time" % "2.14.2",
       "org.typelevel" %% "cats-core" % "2.12.0",
       "org.playframework" %% "play-json" % "3.0.6",
       "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.1" % Test,
