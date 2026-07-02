@@ -6,7 +6,6 @@ version := "0.0.33"
 
 ThisBuild / javacOptions ++= Seq("-source", "17", "-target", "17")
 
-ThisBuild / organization := "com.bryzek"
 ThisBuild / homepage := Some(url("https://github.com/mbryzek/lib-util"))
 ThisBuild / licenses := Seq("MIT" -> url("https://github.com/mbryzek/lib-util/blob/main/LICENSE"))
 ThisBuild / developers := List(
