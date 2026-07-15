@@ -20,6 +20,21 @@ class CsvRowSpec extends AnyWordSpec with Matchers {
       row.getRequiredString("missing").isInvalid mustBe true
     }
 
+    "get optional for required column requires the column but allows a blank value" in {
+      val row = CsvRow(Map("name" -> "John", "email" -> ""))
+      row.getOptionalForRequiredColumn("name").toOption.get mustBe Some("John")
+      row.getOptionalForRequiredColumn("email").toOption.get mustBe None
+      row.getOptionalForRequiredColumn("missing").isInvalid mustBe true
+      row.getOptionalForRequiredColumn("missing").fold(_.head, _ => "") must include("is missing")
+    }
+
+    "get optional for required column normalizes the field name" in {
+      val row = CsvRow(Map("Member Created On" -> ""))
+      row.getOptionalForRequiredColumn("member created on").toOption.get mustBe None
+      row.getOptionalForRequiredColumn("MEMBER CREATED ON").toOption.get mustBe None
+      row.getOptionalForRequiredColumn("nope").isInvalid mustBe true
+    }
+
     "get optional int with bounds" in {
       val row = CsvRow(Map("rating" -> "4", "empty" -> ""))
       row.getOptionalInt("rating").toOption.get mustBe Some(4)

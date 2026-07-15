@@ -28,6 +28,26 @@ case class CsvRow(original: Map[String, String]) {
     _getOptionalString(field)(using formatter).validNec
   }
 
+  /** Optional value from a column that must exist in the file.
+    *
+    *   - column absent: Invalid("<field> is missing")
+    *   - column present, blank: Valid(None) — defined, simply has no value
+    *   - column present, populated: Valid(Some(value))
+    *
+    * [[getOptionalString]] returns None for both an absent column and a blank cell, so a column-reduced file parses
+    * cleanly. Use this for fields whose value is legitimately optional but whose column is part of the expected file
+    * shape.
+    */
+  def getOptionalForRequiredColumn(field: String)(implicit
+    formatter: String => String = identityFormatter
+  ): ValidationResult[Option[String]] = {
+    if (data.isDefinedAt(formatKey(field))) {
+      _getOptionalString(field)(using formatter).validNec
+    } else {
+      errorMessage(field, "is missing").invalidNec
+    }
+  }
+
   private def _getOptionalString(field: String)(implicit
     formatter: String => String
   ): Option[String] = {
