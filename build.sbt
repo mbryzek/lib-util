@@ -57,7 +57,12 @@ lazy val root = project
       "commons-codec" % "commons-codec" % "1.22.1",
       "joda-time" % "joda-time" % "2.14.3",
       "org.typelevel" %% "cats-core" % "2.13.0",
+      // API only — every consumer already brings its own binding (logback, through Play). Declared
+      // at compile scope rather than Provided so this library's own suite can assert the line a
+      // logger actually receives.
+      "org.slf4j" % "slf4j-api" % "2.0.18",
       "org.playframework" %% "play-json" % "3.0.6",
+      "ch.qos.logback" % "logback-classic" % "1.5.32" % Test,
       "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test
     )
   )
