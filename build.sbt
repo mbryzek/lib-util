@@ -65,7 +65,7 @@ lazy val root = project
       // logger actually receives.
       "org.slf4j" % "slf4j-api" % "2.0.18",
       "org.playframework" %% "play-json" % "3.0.6",
-      "ch.qos.logback" % "logback-classic" % "1.5.32" % Test,
+      "ch.qos.logback" % "logback-classic" % "1.6.3" % Test,
       "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test
     )
   )
