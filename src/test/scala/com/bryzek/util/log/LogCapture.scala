@@ -1,9 +1,8 @@
 package com.bryzek.util.log
 
 import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.classic.{Level, Logger as LogbackLogger}
+import ch.qos.logback.classic.{Level, LoggerContext}
 import ch.qos.logback.core.read.ListAppender
-import org.slf4j.LoggerFactory
 
 import scala.jdk.CollectionConverters.*
 
@@ -14,18 +13,33 @@ object LogCapture {
 
   case class Captured(level: Level, message: String, throwableClass: Option[String])
 
-  /** Runs `f` against a logger with its own name and an attached appender, and returns every event
-    * it wrote. The name is per-call so concurrent suites cannot see each other's lines.
+  /** Runs `f` against a logback logger in a LoggerContext created for this call alone, and returns
+    * every event it wrote.
+    *
+    * The context is private rather than the process-wide one `org.slf4j.LoggerFactory` hands out,
+    * and that is what makes this usable from suites running in parallel. `LoggerFactory.getLogger`
+    * returns an `org.slf4j.helpers.SubstituteLogger` — not a logback `Logger` — to every thread that
+    * asks while another thread is still binding the backend, so a capture that casts what it gets
+    * back fails for whichever suite loses that race, in a whole-suite `test` run and never in a
+    * single-suite `testOnly` one. Building the context here binds nothing globally, so there is no
+    * window to lose: the events, the levels and the formatting are logback's own either way.
+    *
+    * Each call getting its own context also means two concurrent captures cannot see each other's
+    * lines whatever name they pass.
     */
   def capture(name: String)(f: org.slf4j.Logger => Unit): Seq[Captured] = {
-    val logger = LoggerFactory.getLogger(name).asInstanceOf[LogbackLogger]
-    val appender = new ListAppender[ILoggingEvent]()
-    appender.start()
-    val previousLevel = logger.getLevel
-    logger.setLevel(Level.INFO)
-    logger.addAppender(appender)
+    val context = new LoggerContext()
+    context.start()
     try {
+      val logger = context.getLogger(name)
+      logger.setLevel(Level.INFO)
+      val appender = new ListAppender[ILoggingEvent]()
+      appender.setContext(context)
+      appender.start()
+      logger.addAppender(appender)
+
       f(logger)
+
       appender.list.asScala.toList.map { e =>
         Captured(
           level = e.getLevel,
@@ -34,9 +48,7 @@ object LogCapture {
         )
       }
     } finally {
-      logger.detachAppender(appender)
-      logger.setLevel(previousLevel)
-      appender.stop()
+      context.stop()
     }
   }
 
