@@ -66,6 +66,19 @@ lazy val root = project
       "org.slf4j" % "slf4j-api" % "2.0.18",
       "org.playframework" %% "play-json" % "3.0.6",
       "ch.qos.logback" % "logback-classic" % "1.6.3" % Test,
-      "org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test
+      // org.lz4:lz4-java reaches the test classpath only here, transitively:
+      // scalatestplus-play -> play-ws -> play -> pekko-serialization-jackson -> lz4-java.
+      // Nothing on that classpath can call it. Pekko loads an LZ4 codec reflectively only when
+      // pekko.serialization.jackson.compression.algorithm is set to lz4 (it ships `off`, and this
+      // repo has no application.conf to override it), and the JacksonSerializer that would read
+      // the setting is reached only through pekko remoting/clustering/persistence, none of which
+      // resolves here. org.lz4 is dead upstream -- its newest version is a relocation POM, so
+      // there is no version to bump to -- which makes dropping the jar the only way to keep
+      // advisories against it off this build. Excluded on this dependency rather than through a
+      // build-wide `excludeDependencies`, which writes an <exclusions> block onto every
+      // compile-scope dependency in the published POM; this one is test scope, so it reaches no
+      // consumer. ISS-4734
+      ("org.scalatestplus.play" %% "scalatestplus-play" % "7.0.2" % Test)
+        .exclude("org.lz4", "lz4-java")
     )
   )
