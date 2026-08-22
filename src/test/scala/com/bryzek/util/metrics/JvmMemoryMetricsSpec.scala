@@ -56,7 +56,7 @@ class JvmMemoryMetricsSpec extends AnyWordSpec with Matchers {
 
   "emit" must {
 
-    // The platform-memory-improvement playbook parses these back out of the message with
+    // The memory-improvement playbook parses these back out of the message with
     // aparse('%<field>: *,%'), which matches nothing — rather than erroring — if the field is absent
     // or unterminated. So the trailing COMMA is part of the contract: it is only there while some
     // other key sorts after this one, and the logger sorts its keys alphabetically.
