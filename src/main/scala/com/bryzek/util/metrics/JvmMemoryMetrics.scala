@@ -7,8 +7,8 @@ import java.lang.management.{MemoryPoolMXBean, MemoryType}
 /** The once-a-minute `JvmMemoryMetrics` line every JVM app in this fleet emits, and the pure readings
   * behind it.
   *
-  * The field NAMES here are a contract, not a formatting detail: the `platform-memory-improvement`
-  * playbook ranks hosts by parsing `heapPercent`, `oldGenUsedMb`, `gcCountDelta` and `gcTimeMsDelta`
+  * The field NAMES here are a contract, not a formatting detail: the `memory-improvement` playbook
+  * ranks hosts by parsing `heapPercent`, `oldGenUsedMb`, `gcCountDelta` and `gcTimeMsDelta`
   * back out of the message string with NRQL `aparse`, and aparse on a field that is absent returns
   * null rather than an error — so a renamed or dropped field reads as a healthy heap rather than as a
   * broken query.
