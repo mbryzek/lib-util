@@ -39,8 +39,7 @@ Jane,jane@example.com"""
 
       val reader = CsvReader.fromStringWithDefaultSettings(csv).toOption.get
       var rowCount = 0
-      val result = reader.read { (builder, row) =>
-        val _ = row.getOptionalString("name") // Use row to avoid warning
+      val result = reader.read { (builder, _) =>
         rowCount += 1
         builder.withSuccess
       }
@@ -57,11 +56,11 @@ Jane,jane@example.com"""
 
       val reader = CsvReader.fromStringWithDefaultSettings(csv).toOption.get
       var rowCount = 0
-      reader.read { (builder, row) =>
-        val _ = row.getOptionalString("name") // Use row to avoid warning
+      val result = reader.read { (builder, _) =>
         rowCount += 1
         builder
       }
+      result.errors mustBe empty
       rowCount mustBe 2
     }
 
@@ -71,11 +70,12 @@ Jane,jane@example.com"""
 
       val reader = CsvReader.fromStringWithDefaultSettings(csv).toOption.get
       var capturedRow: Option[CsvRow] = None
-      reader.read { (builder, row) =>
+      val result = reader.read { (builder, row) =>
         capturedRow = Some(row)
         builder
       }
 
+      result.errors mustBe empty
       capturedRow.get.getOptionalString("name").toOption.get mustBe Some("Smith, John")
       capturedRow.get.getOptionalString("notes").toOption.get mustBe Some("Great player, very skilled")
     }

@@ -24,7 +24,8 @@ class LogCaptureSpec extends AnyWordSpec with Matchers {
     // used, by construction.
     "hand the block a logback logger from a context of its own, never the process-wide one" in {
       var seen: Option[org.slf4j.Logger] = None
-      LogCapture.capture("log-capture-spec-context")(logger => seen = Some(logger))
+      val captured = LogCapture.capture("log-capture-spec-context")(logger => seen = Some(logger))
+      captured mustBe empty
 
       val logger = seen.getOrElse(fail("capture never invoked the block"))
       logger mustBe a[LogbackLogger]
