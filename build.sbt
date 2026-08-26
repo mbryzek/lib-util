@@ -21,6 +21,42 @@ ThisBuild / sonatypeCredentialHost := "central.sonatype.com"
 ThisBuild / sonatypeRepository := "https://central.sonatype.com/api/v1/publisher"
 
 ThisBuild / scalaVersion := "3.8.4"
+
+// Every Jackson artifact on this classpath resolves to one version, declared here.
+//
+// Jackson reaches this build only through play-json 3.0.6, which carries the 2.14 line -- inside
+// the affected range of GHSA-j3rv-43j4-c7qm, where a PolymorphicTypeValidator is consulted for the
+// declared type but not for a generic type PARAMETER of it, so a subtype the validator would
+// refuse is still instantiated during deserialization. play-json has no release above 3.0.6, so
+// there is no upstream version to move to and the coordinates have to be named here.
+//
+// DECLARED, NOT `dependencyOverrides`. An override is resolution-local: it fixes this build's
+// classpath and writes nothing into the published POM, so every consumer would keep resolving
+// 2.14.3 through the transitive edge and inherit the advisory from a library that reads as fixed.
+// A direct compile-scope dependency is what reaches them.
+//
+// The whole family moves together rather than jackson-databind alone. Every module tracks the
+// databind minor version it was built against, and the datatype modules are not dragged forward by
+// a databind bump -- left alone they stay on the transitive 2.14.3 while databind moves.
+//
+// jackson-annotations publishes no patch versions on its 2.20+ lines (maven-metadata.xml runs
+// 2.19.4, 2.20, 2.21, 2.22), so it carries its own version and a patch number there is a 404 that
+// fails the whole resolution.
+//
+// 2.22.2 rather than the advisory's own 2.18.8 floor: both are out of range, and 2.22.2 is what
+// platform and acumen already pin, so the Jackson this library's suite resolves is the one its
+// consumers actually run and the next dependency sweep has nothing to bump.
+lazy val jacksonVersion = "2.22.2"
+lazy val jacksonAnnotationsVersion = "2.22"
+
+lazy val jacksonDependencies = Seq(
+  "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
+  "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
+  "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonAnnotationsVersion,
+  "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % jacksonVersion,
+  "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % jacksonVersion,
+)
+
 // Keep the unused browser-automation stack off the test classpath.
 //
 // It arrives by two transitive routes -- play-test -> io.fluentlenium:fluentlenium-core, and
@@ -116,6 +152,7 @@ lazy val root = project
       Tests.Argument(TestFrameworks.ScalaTest, "-u", (target.value / "test-reports").getAbsolutePath)
     ),
     scalacOptions ++= allScalacOptions,
+    libraryDependencies ++= jacksonDependencies,
     libraryDependencies ++= Seq(
       "com.github.tototoshi" %% "scala-csv" % "2.0.0",
       "commons-codec" % "commons-codec" % "1.22.1",
