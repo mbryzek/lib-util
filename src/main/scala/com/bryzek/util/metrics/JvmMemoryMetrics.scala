@@ -2,7 +2,7 @@ package com.bryzek.util.metrics
 
 import com.bryzek.util.log.CommonLogger
 
-import java.lang.management.{MemoryPoolMXBean, MemoryType}
+import java.lang.management.{GarbageCollectorMXBean, MemoryPoolMXBean, MemoryType}
 
 /** The once-a-minute `JvmMemoryMetrics` line every JVM app in this fleet emits, and the pure readings
   * behind it.
@@ -13,10 +13,11 @@ import java.lang.management.{MemoryPoolMXBean, MemoryType}
   * null rather than an error — so a renamed or dropped field reads as a healthy heap rather than as a
   * broken query.
   *
-  * Sampling the beans and reading the connection pool off Play's `Database` stay in each app, because
-  * both need dependencies (pekko, Play, HikariCP) that do not belong in a general utility library.
   * Everything that decides what the LINE says is here, so there is one definition of the contract
-  * rather than one per app kept in step by a comment.
+  * rather than one per app kept in step by a comment — including how the JMX beans are READ, which
+  * is pure ([[GcCounters.read]], [[summarize]]) and was the half each app had copied. What stays in
+  * each app is only what needs that app's dependencies: the pekko timer that decides WHEN to sample,
+  * and reading the connection pool off Play's `Database`.
   */
 object JvmMemoryMetrics {
 
@@ -65,6 +66,83 @@ object JvmMemoryMetrics {
     )
   }
 
+  /** One reading of every `GarbageCollectorMXBean` in the JVM, split into total GC work and the
+    * stop-the-world part of it.
+    *
+    * THE SPLIT IS THE POINT. `getCollectionTime` on the bean set summed whole answers "how long was
+    * the collector busy", which is NOT "how long was the application stopped": G1 exposes a
+    * `G1 Concurrent GC` bean alongside its two stop-the-world ones, and ZGC and Shenandoah expose a
+    * concurrent `Cycles` bean per generation next to a `Pauses` one. A sum over all of them is an
+    * upper bound on pause that reads as a pause, and the error is not a rounding one — measured on a
+    * 45s allocation load in a 976 MB heap, generational ZGC's real pause total was 124 ms against
+    * G1's 34,943 ms, while the summed figure said ZGC was 1.8x WORSE (64,831 ms against 35,365 ms).
+    * Both numbers are kept because they answer different questions, and because the
+    * `memory-improvement` playbook already parses `gcTimeMsDelta` out of the line.
+    *
+    * `pauseCount` counts stop-the-world EVENTS, which is not the same unit across collectors: G1
+    * counts one per collection, ZGC counts one per STW phase (three or four per cycle). And ZGC's
+    * pauses are microseconds, so `pauseTimeMs` legitimately reads 0 there while `pauseCount` climbs
+    * — a millisecond-resolution bean cannot say otherwise, and 0 is the true rounded value.
+    *
+    * A bean reporting -1 (the JVM's "not available") contributes nothing rather than subtracting.
+    */
+  final case class GcCounters(
+    count: Long,
+    timeMs: Long,
+    pauseCount: Long,
+    pauseTimeMs: Long
+  ) {
+
+    /** The movement since an earlier reading. Clamped at zero: these are JVM-lifetime totals, and a
+      * sampler that restarts re-seeds from the live beans, so a negative difference means the
+      * baseline moved rather than that the collector ran backwards.
+      */
+    def since(previous: GcCounters): GcCounters = GcCounters(
+      count = math.max(0L, count - previous.count),
+      timeMs = math.max(0L, timeMs - previous.timeMs),
+      pauseCount = math.max(0L, pauseCount - previous.pauseCount),
+      pauseTimeMs = math.max(0L, pauseTimeMs - previous.pauseTimeMs)
+    )
+  }
+
+  object GcCounters {
+
+    val Zero: GcCounters = GcCounters(0L, 0L, 0L, 0L)
+
+    /** Substrings that mark a bean as reporting CONCURRENT time. Measured, not inferred — these are
+      * every `GarbageCollectorMXBean` name HotSpot exposes, read off a live JVM on both OpenJDK 17
+      * and 25 (production runs Temurin 21, between them):
+      *
+      *   - G1: `G1 Young Generation`, `G1 Old Generation`, and `G1 Concurrent GC` (JDK 20 and up)
+      *   - ZGC: `ZGC Pauses` / `ZGC Cycles`, and generational `ZGC Minor|Major Pauses|Cycles`
+      *   - Shenandoah: `Shenandoah Pauses`, `Shenandoah Cycles`
+      *   - Parallel: `PS Scavenge`, `PS MarkSweep` — both stop-the-world
+      *   - Serial: `Copy`, `MarkSweepCompact` — both stop-the-world
+      *
+      * A name matching neither marker counts as PAUSE, and the asymmetry is deliberate. Guessing
+      * "concurrent" for an unrecognized bean underreports pause towards zero, and a zero here is
+      * indistinguishable from a healthy collector — the same silent absence that made the fleet's
+      * only GC number unreadable in the first place. Guessing "pause" degrades to the upper bound
+      * this type replaced, which is wrong in the direction that still fires an alert.
+      */
+    private val ConcurrentNameMarkers: Seq[String] = Seq("Concurrent", "Cycles")
+
+    def isConcurrent(beanName: String): Boolean = ConcurrentNameMarkers.exists(beanName.contains)
+
+    def read(beans: Iterable[GarbageCollectorMXBean]): GcCounters =
+      beans.foldLeft(Zero) { (acc, bean) =>
+        val count = math.max(0L, bean.getCollectionCount)
+        val timeMs = math.max(0L, bean.getCollectionTime)
+        val stopTheWorld = !isConcurrent(bean.getName)
+        GcCounters(
+          count = acc.count + count,
+          timeMs = acc.timeMs + timeMs,
+          pauseCount = acc.pauseCount + (if (stopTheWorld) count else 0L),
+          pauseTimeMs = acc.pauseTimeMs + (if (stopTheWorld) timeMs else 0L)
+        )
+      }
+  }
+
   /** Fraction of `maximumPoolSize` at which the pool counts as saturated even though nothing is
     * blocked yet. A pool sitting at 80% is one slow query away from queueing, which is the point at
     * which someone wants to be looking rather than the point at which requests are already waiting.
@@ -97,18 +175,16 @@ object JvmMemoryMetrics {
     }
   }
 
-  /** One tick's worth of JVM memory readings. `gcCount` / `gcTimeMs` are JVM-lifetime totals; the
-    * deltas are the movement since the previous sample, which is what alerting can act on.
+  /** One tick's worth of JVM memory readings. `gc` holds JVM-lifetime totals; `gcDelta` is the
+    * movement since the previous sample, which is what alerting can act on.
     */
   case class Sample(
     heapUsedMb: Long,
     heapMaxMb: Long,
     nonHeapUsedMb: Long,
     pools: PoolBreakdown,
-    gcCount: Long,
-    gcTimeMs: Long,
-    gcCountDelta: Long,
-    gcTimeMsDelta: Long,
+    gc: GcCounters,
+    gcDelta: GcCounters,
     dbPool: Option[DbPool]
   ) {
 
@@ -124,7 +200,8 @@ object JvmMemoryMetrics {
     * present and `survivorUsedMb` when it is not. Neither is in the parsed set, and that is not luck:
     * a key that sorts after `gcTimeMsDelta`, `heapPercent` or `oldGenUsedMb` is what keeps them
     * parseable, so [[JvmMemoryMetricsSpec]] asserts the comma rather than just the presence of each
-    * field, in both shapes. The last key is still readable — `aparse` with no trailing comma
+    * field, in both shapes. The four `gcPause*` keys sort inside the `gc` block and so terminate
+    * themselves and change nothing about which key sorts last — asserted, not assumed. The last key is still readable — `aparse` with no trailing comma
     * (`'%totalConnections: *'`) matches to end of line; verified against NerdGraph on account 7724695
     * with this exact line on 2026-08-11, along with all nine of the others.
     *
@@ -143,10 +220,14 @@ object JvmMemoryMetrics {
       .withKeyValue("survivorUsedMb", sample.pools.survivorUsedMb)
       .withKeyValue("metaspaceUsedMb", sample.pools.metaspaceUsedMb)
       .withKeyValue("nonHeapUsedMb", sample.nonHeapUsedMb)
-      .withKeyValue("gcCount", sample.gcCount)
-      .withKeyValue("gcTimeMs", sample.gcTimeMs)
-      .withKeyValue("gcCountDelta", sample.gcCountDelta)
-      .withKeyValue("gcTimeMsDelta", sample.gcTimeMsDelta)
+      .withKeyValue("gcCount", sample.gc.count)
+      .withKeyValue("gcTimeMs", sample.gc.timeMs)
+      .withKeyValue("gcPauseCount", sample.gc.pauseCount)
+      .withKeyValue("gcPauseMs", sample.gc.pauseTimeMs)
+      .withKeyValue("gcCountDelta", sample.gcDelta.count)
+      .withKeyValue("gcTimeMsDelta", sample.gcDelta.timeMs)
+      .withKeyValue("gcPauseCountDelta", sample.gcDelta.pauseCount)
+      .withKeyValue("gcPauseMsDelta", sample.gcDelta.pauseTimeMs)
 
     val l = sample.dbPool.fold(jvm) { p =>
       jvm
