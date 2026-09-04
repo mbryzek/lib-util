@@ -183,7 +183,7 @@ lazy val root = project
       // API only — every consumer already brings its own binding (logback, through Play). Declared
       // at compile scope rather than Provided so this library's own suite can assert the line a
       // logger actually receives.
-      "org.slf4j" % "slf4j-api" % "2.0.18",
+      "org.slf4j" % "slf4j-api" % "2.0.19",
       "org.playframework" %% "play-json" % "3.0.6",
       "ch.qos.logback" % "logback-classic" % "1.6.3" % Test,
       // org.lz4:lz4-java reaches the test classpath only here, transitively:
