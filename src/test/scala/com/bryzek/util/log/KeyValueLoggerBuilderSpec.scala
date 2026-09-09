@@ -1,14 +1,37 @@
 package com.bryzek.util.log
 
 import cats.data.NonEmptyChain
-import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.{Level, LoggerContext}
+import net.logstash.logback.encoder.LogstashEncoder
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.slf4j.LoggerFactory
+import play.api.libs.json.{JsValue, Json}
+
+import java.nio.charset.StandardCharsets
 
 class KeyValueLoggerBuilderSpec extends AnyWordSpec with Matchers {
 
   private def builder: KeyValueLoggerBuilder = KeyValueLoggerBuilder(LoggerFactory.getLogger("key-value-logger-spec"))
+
+  /** What a JSON-encoding consumer actually receives for `captured`.
+    *
+    * The marker is not visible in the formatted message — that is the whole point of it — so the
+    * only honest assertion is the one an encoder makes. `LogstashEncoder` is the encoder platform's
+    * `api/conf/logback.xml` names, so this asserts against the real reader rather than a stand-in.
+    */
+  private def encodeAsJson(captured: LogCapture.Captured): JsValue = {
+    val context = new LoggerContext()
+    context.start()
+    try {
+      val encoder = new LogstashEncoder()
+      encoder.setContext(context)
+      encoder.start()
+      Json.parse(new String(encoder.encode(captured.event), StandardCharsets.UTF_8))
+    } finally {
+      context.stop()
+    }
+  }
 
   "render" must {
 
@@ -110,6 +133,55 @@ class KeyValueLoggerBuilderSpec extends AnyWordSpec with Matchers {
         captured.message mustBe "msg boom a: 1"
         captured.throwableClass mustBe Some("java.lang.RuntimeException")
       }
+    }
+  }
+
+  // The two halves of the contract. `message` stays exactly what `render` produced, because the New
+  // Relic memory and slow-request queries parse it with aparse('%<field>: *,%'); the same pairs
+  // arrive AS FIELDS, because a LogsQL rule selects `heap_used_mb` rather than substring-matching
+  // the message for it. Neither half is allowed to move without the other.
+  "the marker" must {
+
+    "put every key value on the line as a top-level JSON field, on every level" in {
+      Seq[KeyValueLoggerBuilder => Unit](
+        _.info("msg"),
+        _.warn("msg"),
+        _.error("msg"),
+        _.warn(new RuntimeException("boom"), "msg"),
+        _.error(new RuntimeException("boom"), "msg")
+      ).foreach { emit =>
+        val captured = LogCapture.captureOne("key-value-logger-spec-marker") { logger =>
+          emit(KeyValueLoggerBuilder(logger).withKeyValue("heap_used_mb", "812").withKeyValue("environment", "Prod"))
+        }
+        val json = encodeAsJson(captured)
+        (json \ "heap_used_mb").as[String] mustBe "812"
+        (json \ "environment").as[String] mustBe "Prod"
+      }
+    }
+
+    "leave the rendered message byte for byte what render produced" in {
+      val captured = LogCapture.captureOne("key-value-logger-spec-marker-message") { logger =>
+        KeyValueLoggerBuilder(logger).withKeyValue("b", "2").withKeyValue("a", "1").info("msg")
+      }
+      captured.message mustBe "msg a: 1, b: 2"
+      (encodeAsJson(captured) \ "message").as[String] mustBe "msg a: 1, b: 2"
+    }
+
+    "index a sequence into one field per element, matching the rendered keys" in {
+      val captured = LogCapture.captureOne("key-value-logger-spec-marker-seq") { logger =>
+        KeyValueLoggerBuilder(logger).withKeyValues("id", Seq("a", "b")).info("msg")
+      }
+      val json = encodeAsJson(captured)
+      (json \ "id_0").as[String] mustBe "a"
+      (json \ "id_1").as[String] mustBe "b"
+      (json \ "message").as[String] mustBe "msg id_0: a, id_1: b"
+    }
+
+    "attach nothing when there are no key values" in {
+      val captured =
+        LogCapture.captureOne("key-value-logger-spec-marker-empty")(logger => KeyValueLoggerBuilder(logger).info("msg"))
+      captured.event.getMarkerList mustBe null
+      (encodeAsJson(captured) \ "message").as[String] mustBe "msg"
     }
   }
 }
