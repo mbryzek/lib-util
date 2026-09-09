@@ -1,7 +1,10 @@
 package com.bryzek.util.log
 
 import cats.data.NonEmptyChain
-import org.slf4j.Logger
+import net.logstash.logback.marker.Markers
+import org.slf4j.{Logger, Marker}
+
+import scala.jdk.CollectionConverters.*
 
 /** The key/value logging contract every app in this fleet emits through.
   *
@@ -11,6 +14,11 @@ import org.slf4j.Logger
   * field, and that returns null rather than an error when the field is absent. So a renamed, dropped
   * or re-sorted key reads as healthy data rather than as a broken query, across every app pointed at
   * by one query. [[KeyValueLoggerBuilderSpec]] pins both properties.
+  *
+  * The SAME pairs are also attached to the line as a logstash Marker, so an app whose encoder emits
+  * JSON gets each of them as a top-level field it can select on rather than substring-match out of
+  * `message`. Both halves are emitted on every line: the rendered text is unchanged, so nothing that
+  * reads it has to move when a consumer switches encoders.
   *
   * Each app supplies its own injectable implementation (which is where per-app keys such as
   * platform's `environment` are attached); the accumulation and rendering are here so there is one
@@ -74,11 +82,63 @@ case class KeyValueLoggerBuilder(
     }
   }
 
-  override def info(msg: String): Unit = logger.info(render(msg, None))
-  override def warn(msg: String): Unit = logger.warn(render(msg, None))
-  override def warn(ex: Throwable, msg: String): Unit = logger.warn(render(msg, Some(ex)), ex)
-  override def error(msg: String): Unit = logger.error(render(msg, None))
-  override def error(ex: Throwable, msg: String): Unit = logger.error(render(msg, Some(ex)), ex)
+  /** The accumulated pairs as a logstash Marker, so a JSON encoder emits each of them as a
+    * TOP-LEVEL FIELD of the log line.
+    *
+    * This is the second half of the contract, not a replacement for the first: [[render]] still
+    * folds the same pairs into the message text byte for byte, because that text is what the New
+    * Relic memory and slow-request queries parse with `aparse`. The marker adds `heap_used_mb` as a
+    * field a LogsQL rule can SELECT, next to a `message` an `aparse` can still substring-match.
+    *
+    * A consumer whose encoder is a pattern encoder — acumen today, and every test JVM — is
+    * unaffected: logback hands the marker to the encoder, which ignores it.
+    *
+    * `None` rather than an empty marker when there are no pairs, so a line with nothing to attach
+    * takes the same code path it always did.
+    */
+  private def marker: Option[Marker] = {
+    Option.when(keyValues.nonEmpty)(Markers.appendEntries(keyValues.asJava))
+  }
+
+  override def info(msg: String): Unit = {
+    val line = render(msg, None)
+    marker match {
+      case None => logger.info(line)
+      case Some(m) => logger.info(m, line)
+    }
+  }
+
+  override def warn(msg: String): Unit = {
+    val line = render(msg, None)
+    marker match {
+      case None => logger.warn(line)
+      case Some(m) => logger.warn(m, line)
+    }
+  }
+
+  override def warn(ex: Throwable, msg: String): Unit = {
+    val line = render(msg, Some(ex))
+    marker match {
+      case None => logger.warn(line, ex)
+      case Some(m) => logger.warn(m, line, ex)
+    }
+  }
+
+  override def error(msg: String): Unit = {
+    val line = render(msg, None)
+    marker match {
+      case None => logger.error(line)
+      case Some(m) => logger.error(m, line)
+    }
+  }
+
+  override def error(ex: Throwable, msg: String): Unit = {
+    val line = render(msg, Some(ex))
+    marker match {
+      case None => logger.error(line, ex)
+      case Some(m) => logger.error(m, line, ex)
+    }
+  }
 
   /** The emitted line: the message, then the throwable's MESSAGE when there is one, then every
     * key/value sorted by key and joined with `", "`.

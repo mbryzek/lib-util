@@ -184,6 +184,17 @@ lazy val root = project
       // at compile scope rather than Provided so this library's own suite can assert the line a
       // logger actually receives.
       "org.slf4j" % "slf4j-api" % "2.0.19",
+      // The Marker `KeyValueLoggerBuilder` attaches its accumulated pairs to, so a JSON encoder
+      // emits each pair as a TOP-LEVEL FIELD alongside the rendered `message` rather than only
+      // inside it. Compile scope, not Provided: the reference is in the bytecode of a class every
+      // consumer loads, so a consumer without this jar throws NoClassDefFoundError on its first
+      // log line. It costs a consumer that renders with a pattern encoder nothing at runtime --
+      // logback hands the marker to the encoder, which ignores it -- so acumen and every test JVM
+      // see the same lines they see today.
+      //
+      // The pom declares logback-classic `provided`, so this brings no logging backend of its own;
+      // the version each consumer already pins is what binds.
+      "net.logstash.logback" % "logstash-logback-encoder" % "9.0",
       "org.playframework" %% "play-json" % "3.0.6",
       "ch.qos.logback" % "logback-classic" % "1.6.3" % Test,
       // org.lz4:lz4-java reaches the test classpath only here, transitively:
