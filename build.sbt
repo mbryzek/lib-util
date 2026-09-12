@@ -80,6 +80,45 @@ ThisBuild / dependencyOverrides ++= Seq(
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion,
 )
 
+// Jackson 3 -- the `tools.jackson` coordinates -- resolves to one version too. It is a separate
+// family from the `com.fasterxml.jackson` one above rather than a newer release of it, and the two
+// coexist here: the packages differ, so neither shadows the other and conflict resolution never
+// puts them in the same bucket. Jackson 3's databind still depends on the 2.x
+// `com.fasterxml.jackson.core:jackson-annotations` -- there is no `tools.jackson.core`
+// annotations artifact -- and the 3.1 line asks for 2.21, which the annotations pin above already
+// satisfies.
+//
+// It arrives through net.logstash.logback:logstash-logback-encoder, whose 9.0 release moved its
+// JSON encoding to Jackson 3 and declares tools.jackson.core:jackson-databind at compile scope;
+// databind brings tools.jackson.core:jackson-core with it. Those two are the whole of Jackson 3 on
+// this classpath, so unlike the family above there is nothing else to hold in lockstep: the
+// encoder's cbor, smile and yaml dataformat dependencies are declared `optional` and resolve
+// nowhere. Enabling one of the decorators that needs one means declaring that artifact here at
+// this version, not inheriting whatever the encoder's POM names.
+//
+// The floor is a security one and two advisories set it, one on each artifact. jackson-core below
+// 3.1.4 applies maxNumberLength to the digits within each chunk fed to the non-blocking parser
+// rather than to the number accumulated across feeds, so a number split across `feedInput` calls
+// is not bounded at all and no chunk ever has to exceed the limit (GHSA-r7wm-3cxj-wff9).
+// jackson-databind below 3.1.5 replays a `@JsonUnwrapped` property's buffered JSON without asking
+// whether that property is visible in the active view, so a property a write path excluded with
+// `@JsonView` is populated from the document anyway (GHSA-5gvw-p9qm-jgwh).
+//
+// Databind's is the binding one, so 3.1.5 is the lowest this pin may state, and it is what it
+// states. The 3.2 line clears both from 3.2.1 and is deliberately not what this pin states: it is
+// a further minor line above what the encoder was compiled against, and the encoder reaches
+// Jackson only through internal SPI that a minor line is free to move.
+// `Jackson3PinSpec` asserts each of those two limits behaviourally, so a pin that slips below the
+// floor fails there by name; `KeyValueLoggerBuilderSpec` encodes a real logging event through
+// `LogstashEncoder`, which is what observes that the encoder still links against whatever this
+// resolves.
+lazy val jackson3Version = "3.1.5"
+
+ThisBuild / dependencyOverrides ++= Seq(
+  "tools.jackson.core" % "jackson-databind" % jackson3Version,
+  "tools.jackson.core" % "jackson-core" % jackson3Version,
+)
+
 // Keep the unused browser-automation stack off the test classpath.
 //
 // It arrives by two transitive routes -- play-test -> io.fluentlenium:fluentlenium-core, and
