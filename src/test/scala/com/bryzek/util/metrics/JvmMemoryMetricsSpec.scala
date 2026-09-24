@@ -61,7 +61,7 @@ class JvmMemoryMetricsSpec extends AnyWordSpec with Matchers {
     }
 
   /** Emits through the real builder every app logs through, so the assertions below read the string
-    * NewRelic actually receives rather than a reconstruction of it.
+    * `dev obs logs` actually reads rather than a reconstruction of it.
     */
   private def emitted(s: Sample): LogCapture.Captured =
     LogCapture.captureOne("jvm-memory-metrics-spec") { logger => emit(KeyValueLoggerBuilder(logger), s) }
@@ -69,10 +69,10 @@ class JvmMemoryMetricsSpec extends AnyWordSpec with Matchers {
   "emit" must {
 
     // The memory-improvement playbook parses these back out of the message with
-    // aparse('%<field>: *,%'), which matches nothing — rather than erroring — if the field is absent
-    // or unterminated. So the trailing COMMA is part of the contract: it is only there while some
+    // extract "<field>: <value>,", which leaves the field unset — rather than erroring — if it is
+    // absent or unterminated. So the trailing COMMA is part of the contract: it is only there while some
     // other key sorts after this one, and the logger sorts its keys alphabetically.
-    "write every field the memory playbook ranks on in the shape NRQL aparse needs" in {
+    "write every field the memory playbook ranks on in the shape LogsQL extract needs" in {
       val line = emitted(sample()).message
 
       Map(
@@ -118,11 +118,11 @@ class JvmMemoryMetricsSpec extends AnyWordSpec with Matchers {
       }
     }
 
-    // The four gauges NEW_RELIC_JMX_ENABLED=false removes from APM (Busy / Idle / Total / Threads
-    // Awaiting Count), read against the maximumPoolSize they mean nothing without. Comma-terminated
-    // for the same aparse reason as everything above — only totalConnections, which nothing parses,
+    // The four HikariCP pool gauges (Busy / Idle / Total / Threads Awaiting Count), read against
+    // the maximumPoolSize they mean nothing without. Comma-terminated for the same extract reason
+    // as everything above — only totalConnections, which nothing parses,
     // is allowed to sort last.
-    "carry the HikariCP pool gauges the JMX metrics used to" in {
+    "carry the HikariCP pool gauges" in {
       val line = emitted(sample()).message
       Seq(
         "activeConnections: 3,",
