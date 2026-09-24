@@ -9,11 +9,12 @@ import scala.jdk.CollectionConverters.*
 /** The key/value logging contract every app in this fleet emits through.
   *
   * The RENDERED LINE is an alerting interface, not a formatting detail. [[KeyValueLoggerBuilder]]
-  * sorts its keys alphabetically and joins them with `", "`, and the NRQL that reads these lines
-  * parses a field back out with `aparse('%<field>: *,%')` — a pattern that needs the COMMA after the
-  * field, and that returns null rather than an error when the field is absent. So a renamed, dropped
-  * or re-sorted key reads as healthy data rather than as a broken query, across every app pointed at
-  * by one query. [[KeyValueLoggerBuilderSpec]] pins both properties.
+  * sorts its keys alphabetically and joins them with `", "`, and the LogsQL that reads these lines
+  * through `dev obs logs` pulls a field back out with `extract "<field>: <value>,"` — a pattern that
+  * needs the COMMA after the value, and that leaves the field unset rather than erroring when it is
+  * absent. So a renamed, dropped or re-sorted key reads as healthy data rather than as a broken
+  * query, across every app pointed at by one query. [[KeyValueLoggerBuilderSpec]] pins both
+  * properties.
   *
   * The SAME pairs are also attached to the line as a logstash Marker, so an app whose encoder emits
   * JSON gets each of them as a top-level field it can select on rather than substring-match out of
@@ -86,9 +87,9 @@ case class KeyValueLoggerBuilder(
     * TOP-LEVEL FIELD of the log line.
     *
     * This is the second half of the contract, not a replacement for the first: [[render]] still
-    * folds the same pairs into the message text byte for byte, because that text is what the New
-    * Relic memory and slow-request queries parse with `aparse`. The marker adds `heap_used_mb` as a
-    * field a LogsQL rule can SELECT, next to a `message` an `aparse` can still substring-match.
+    * folds the same pairs into the message text byte for byte, because that text is what the
+    * memory and slow-request queries parse with LogsQL `extract`. The marker adds `heap_used_mb` as
+    * a field a LogsQL rule can SELECT, next to a `message` an `extract` can still pattern-match.
     *
     * A consumer whose encoder is a pattern encoder — acumen today, and every test JVM — is
     * unaffected: logback hands the marker to the encoder, which ignores it.
@@ -143,17 +144,15 @@ case class KeyValueLoggerBuilder(
   /** The emitted line: the message, then the throwable's MESSAGE when there is one, then every
     * key/value sorted by key and joined with `", "`.
     *
-    * Public because the sort and the join are the contract the NRQL in the memory and slow-request
-    * playbooks parses, so they are asserted directly rather than through a log backend.
+    * Public because the sort and the join are the contract the LogsQL in the memory and
+    * slow-request playbooks parses, so they are asserted directly rather than through a log backend.
     *
     * The throwable contributes only its message. Its stack trace is rendered by logback, which the
     * `warn`/`error` overloads hand the exception to directly. Writing a second copy with
-    * `printStackTrace(System.err)` puts it somewhere strictly worse: raw stderr is not forwarded to
-    * New Relic, so that copy is unreachable from `dev newrelic logs` and outlives nothing but the
-    * pod — measured on 2026-08-10 against acumen-web, where a logback line returned 24 records over
-    * 7 days while raw-stderr lines from the same containers returned 0 (ISS-1824). It also arrives
-    * detached from the key/values assembled here, so the trace and the request it belonged to cannot
-    * be lined up even by someone reading the pod directly.
+    * `printStackTrace(System.err)` puts it somewhere strictly worse: it bypasses logback, so it
+    * reaches `dev obs logs` as one bare line per stack frame with no level, no logger and none of
+    * the key/values assembled here, and the trace and the request it belonged to cannot be lined
+    * up (ISS-1824).
     */
   override def render(msg: String, ex: Option[Throwable]): String = {
     val exMsg = ex match {

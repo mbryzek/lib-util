@@ -39,8 +39,9 @@ class KeyValueLoggerBuilderSpec extends AnyWordSpec with Matchers {
       builder.render("hello", None) mustBe "hello"
     }
 
-    // The NRQL that reads these lines parses a field with aparse('%<field>: *,%'), which needs the
-    // comma AFTER the field and returns null rather than an error when it is missing. The sort is
+    // The LogsQL that reads these lines through `dev obs logs` parses a field with
+    // extract "<field>: <value>,", which needs the comma AFTER the value and leaves the field unset
+    // rather than erroring when it is missing. The sort is
     // what decides which key is last and therefore which one is unterminated, so it is asserted
     // exactly rather than by membership.
     "sort keys alphabetically and join them with a comma and a space" in {
@@ -51,7 +52,7 @@ class KeyValueLoggerBuilderSpec extends AnyWordSpec with Matchers {
         .render("msg", None) mustBe "msg apple: a, mango: m, zebra: z"
     }
 
-    "leave every key but the last comma-terminated, which is what aparse needs" in {
+    "leave every key but the last comma-terminated, which is what LogsQL extract needs" in {
       val line = builder.withKeyValue("b", "2").withKeyValue("a", "1").withKeyValue("c", "3").render("msg", None)
       line must include("a: 1,")
       line must include("b: 2,")
@@ -136,8 +137,8 @@ class KeyValueLoggerBuilderSpec extends AnyWordSpec with Matchers {
     }
   }
 
-  // The two halves of the contract. `message` stays exactly what `render` produced, because the New
-  // Relic memory and slow-request queries parse it with aparse('%<field>: *,%'); the same pairs
+  // The two halves of the contract. `message` stays exactly what `render` produced, because the
+  // memory and slow-request queries parse it with extract "<field>: <value>,"; the same pairs
   // arrive AS FIELDS, because a LogsQL rule selects `heap_used_mb` rather than substring-matching
   // the message for it. Neither half is allowed to move without the other.
   "the marker" must {

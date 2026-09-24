@@ -9,9 +9,9 @@ import java.lang.management.{GarbageCollectorMXBean, MemoryPoolMXBean, MemoryTyp
   *
   * The field NAMES here are a contract, not a formatting detail: the `memory-improvement` playbook
   * ranks hosts by parsing `heapPercent`, `oldGenUsedMb`, `gcCountDelta` and `gcTimeMsDelta`
-  * back out of the message string with NRQL `aparse`, and aparse on a field that is absent returns
-  * null rather than an error — so a renamed or dropped field reads as a healthy heap rather than as a
-  * broken query.
+  * back out of the message string with LogsQL `extract` through `dev obs logs`, and extract on a
+  * field that is absent leaves it unset rather than erroring — so a renamed or dropped field reads
+  * as a healthy heap rather than as a broken query.
   *
   * Everything that decides what the LINE says is here, so there is one definition of the contract
   * rather than one per app kept in step by a comment — including how the JMX beans are READ, which
@@ -149,13 +149,10 @@ object JvmMemoryMetrics {
     */
   private val PoolSaturationFraction = 0.8
 
-  /** The four HikariCP gauges that used to reach New Relic as `Database Connection/HikariCP/...` JMX
-    * metrics, plus the `maximumPoolSize` they have to be read against.
+  /** The four HikariCP gauges, plus the `maximumPoolSize` they have to be read against.
     *
-    * They live on this line rather than as APM metrics because `jmx.enabled` — the only setting that
-    * governs them — also drags in seven constant configuration names per app restated every minute
-    * forever (ISS-1870). Once this line carries the gauges, `NEW_RELIC_JMX_ENABLED=false` costs
-    * nothing; before it, the flag would remove the only pool-saturation signal an app has.
+    * They live on this line rather than as JMX metrics exported by an APM agent, so the only
+    * pool-saturation signal an app has depends on nothing but the line itself (ISS-1870).
     */
   case class DbPool(
     activeConnections: Int,
@@ -192,18 +189,18 @@ object JvmMemoryMetrics {
     def heapPercent: Long = if (heapMaxMb > 0) heapUsedMb * 100 / heapMaxMb else 0L
   }
 
-  /** Emits the sample as the single `JvmMemoryMetrics` line NewRelic reads.
+  /** Emits the sample as the single `JvmMemoryMetrics` line `dev obs logs` reads.
     *
-    * The aparse pattern is `'%<field>: *,%'`, so a parsed field needs a COMMA after it.
+    * The LogsQL pattern is `extract "<field>: <value>,"`, so a parsed field needs a COMMA after it.
     * [[com.bryzek.util.log.KeyValueLoggerBuilder]] sorts its keys alphabetically and joins them with
     * ", ", which leaves only the LAST key unterminated — `totalConnections` when the pool sample is
     * present and `survivorUsedMb` when it is not. Neither is in the parsed set, and that is not luck:
     * a key that sorts after `gcTimeMsDelta`, `heapPercent` or `oldGenUsedMb` is what keeps them
     * parseable, so [[JvmMemoryMetricsSpec]] asserts the comma rather than just the presence of each
     * field, in both shapes. The four `gcPause*` keys sort inside the `gc` block and so terminate
-    * themselves and change nothing about which key sorts last — asserted, not assumed. The last key is still readable — `aparse` with no trailing comma
-    * (`'%totalConnections: *'`) matches to end of line; verified against NerdGraph on account 7724695
-    * with this exact line on 2026-08-11, along with all nine of the others.
+    * themselves and change nothing about which key sorts last — asserted, not assumed. The last key
+    * is still readable — an `extract` with no trailing anchor (`extract "totalConnections: <n>"`)
+    * captures to end of line.
     *
     * Split out of the app's actor so that assertion can be made on the real emitted line without
     * running a tick (which on platform would also run the job-tier heap governor and force a Full
