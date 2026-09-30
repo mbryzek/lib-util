@@ -104,15 +104,21 @@ ThisBuild / dependencyOverrides ++= Seq(
 // whether that property is visible in the active view, so a property a write path excluded with
 // `@JsonView` is populated from the document anyway (GHSA-5gvw-p9qm-jgwh).
 //
-// Databind's is the binding one, so 3.1.5 is the lowest this pin may state, and it is what it
-// states. The 3.2 line clears both from 3.2.1 and is deliberately not what this pin states: it is
+// jackson-databind below 3.1.6 carries three more: `DefaultBaseTypeLimitingValidator` leaves
+// `Comparable` off the base types it refuses, so polymorphic typing declared against one admits
+// any subtype (GHSA-gx83-3vf8-gh7j); `Duration` and `XMLGregorianCalendar` deserialization parse a
+// number of unbounded length (GHSA-q4xh-88c3-wmh7); and `Path` deserialization resolves whatever
+// `FileSystemProvider` scheme the document names rather than an allowlist (GHSA-wjgm-6hv5-3cvf).
+//
+// Databind's is the binding one, so 3.1.6 is the lowest this pin may state, and it is what it
+// states. The 3.2 line clears all of them from 3.2.2 and is deliberately not what this pin states: it is
 // a further minor line above what the encoder was compiled against, and the encoder reaches
 // Jackson only through internal SPI that a minor line is free to move.
 // `Jackson3PinSpec` asserts each of those two limits behaviourally, so a pin that slips below the
 // floor fails there by name; `KeyValueLoggerBuilderSpec` encodes a real logging event through
 // `LogstashEncoder`, which is what observes that the encoder still links against whatever this
 // resolves.
-lazy val jackson3Version = "3.1.5"
+lazy val jackson3Version = "3.1.6"
 
 ThisBuild / dependencyOverrides ++= Seq(
   "tools.jackson.core" % "jackson-databind" % jackson3Version,
