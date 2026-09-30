@@ -1,6 +1,6 @@
 name := "lib-util"
 
-version := "0.0.60"
+version := "0.0.61"
 
 ThisBuild / javacOptions ++= Seq("-source", "17", "-target", "17")
 
