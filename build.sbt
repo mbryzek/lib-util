@@ -223,12 +223,12 @@ lazy val root = project
     libraryDependencies ++= Seq(
       "com.github.tototoshi" %% "scala-csv" % "2.0.0",
       "commons-codec" % "commons-codec" % "1.22.1",
-      "joda-time" % "joda-time" % "2.14.3",
+      "joda-time" % "joda-time" % "2.15.0",
       "org.typelevel" %% "cats-core" % "2.13.0",
       // API only — every consumer already brings its own binding (logback, through Play). Declared
       // at compile scope rather than Provided so this library's own suite can assert the line a
       // logger actually receives.
-      "org.slf4j" % "slf4j-api" % "2.0.19",
+      "org.slf4j" % "slf4j-api" % "2.0.20",
       // The Marker `KeyValueLoggerBuilder` attaches its accumulated pairs to, so a JSON encoder
       // emits each pair as a TOP-LEVEL FIELD alongside the rendered `message` rather than only
       // inside it. Compile scope, not Provided: the reference is in the bytecode of a class every
@@ -241,7 +241,7 @@ lazy val root = project
       // the version each consumer already pins is what binds.
       "net.logstash.logback" % "logstash-logback-encoder" % "9.0",
       "org.playframework" %% "play-json" % "3.0.6",
-      "ch.qos.logback" % "logback-classic" % "1.6.3" % Test,
+      "ch.qos.logback" % "logback-classic" % "1.6.5" % Test,
       // org.lz4:lz4-java reaches the test classpath only here, transitively:
       // scalatestplus-play -> play-ws -> play -> pekko-serialization-jackson -> lz4-java.
       // Nothing on that classpath can call it. Pekko loads an LZ4 codec reflectively only when
