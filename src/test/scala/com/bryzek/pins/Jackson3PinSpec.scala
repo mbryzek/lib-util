@@ -1,4 +1,4 @@
-package com.bryzek.util
+package com.bryzek.pins
 
 import com.fasterxml.jackson.annotation.{JsonUnwrapped, JsonView}
 import org.scalatest.matchers.must.Matchers
@@ -58,9 +58,9 @@ object Jackson3PinSpec {
   }
 }
 
-/** Jackson 3 -- the `tools.jackson` artifacts -- is pinned in build.sbt rather than inherited from
-  * logstash-logback-encoder, and a pin that slips below the floor resolves cleanly and says
-  * nothing.
+/** Jackson 3 -- the `tools.jackson` artifacts -- is pinned by `BryzekPins.jackson3` rather than
+  * inherited from logstash-logback-encoder, and a pin that slips below the floor resolves cleanly
+  * and says nothing.
   *
   * Neither of the two advisories that set that floor can be read off a version number: each is the
   * behaviour of a limit that is configured, reported as in force, and not applied.
