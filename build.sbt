@@ -22,117 +22,16 @@ ThisBuild / sonatypeRepository := "https://central.sonatype.com/api/v1/publisher
 
 ThisBuild / scalaVersion := "3.8.4"
 
-// Every Jackson artifact in this build resolves to one version.
+// The Jackson 2, Jackson 3 and logback security pins are DECLARED in project/BryzekPins.scala, a
+// copy of devops's templates/scala-libs/project/BryzekPins.scala that ci/build.sh holds
+// byte-identical to it, together with the pin specs under src/test/scala/com/bryzek/pins. That
+// file carries why each floor is what it is; an advisory bump is edited there and copied here.
 //
-// Jackson's own compatibility rule is that a release train moves together: the datatype and
-// dataformat modules compile against databind's internal serializer/deserializer SPI, and
-// jackson-module-scala additionally asserts its databind version at runtime and refuses to
-// register outside its own minor line. Only that last one fails loudly; a datatype module left
-// behind on an older line links fine and throws AbstractMethodError or NoSuchMethodError on
-// whichever serializer path first touches a changed SPI method. `JacksonPinSpec` asserts the pair
-// registers, so a partial bump fails by name here rather than opaquely in a consumer.
-//
-// Drift is the default here rather than an accident. play-json and pekko-serialization-jackson
-// contribute the whole family transitively at one version, so pinning a single coordinate wins the
-// conflict only for that artifact and the ones it depends on, leaving cbor/jdk8/jsr310/
-// parameter-names behind. Overriding the whole family is what makes one version true of all of
-// them.
-//
-// The floor is a security one and six advisories set it, so it is stated as a range rather than a
-// single number. jackson-core below 2.15.0 has no nesting-depth limit and throws StackOverflowError
-// on deeply nested input rather than rejecting it (GHSA-h46c-h94j-95f3), and that is the version
-// play-json resolves. jackson-databind below 2.18.8 -- and again on 2.19.0 through 2.21.3 --
-// validates a type id carrying generics by the substring before the `<` and then resolves the type
-// arguments out of the rest of it without ever offering them to the PolymorphicTypeValidator, so an
-// allow-list naming one safe container admits any type smuggled into that container's parameter
-// position (GHSA-j3rv-43j4-c7qm). Databind over that same range also answers
-// `allowIfSubTypeIsArray` on `clazz.isArray()` alone and never validates the array's component
-// type, so a denied class named as the element of an array is admitted and instantiated with no
-// further check (GHSA-rmj7-2vxq-3g9f). jackson-core over that same range applies maxNumberLength to
-// the digits within each chunk fed to the non-blocking parser rather than to the number accumulated
-// across feeds, so a number split across `feedInput` calls is not bounded at all and no chunk ever
-// has to exceed the limit (GHSA-r7wm-3cxj-wff9).
-//
-// jackson-databind carries two more, fixed on each release line separately: below 2.18.11, on
-// 2.19.0 through 2.21.6, and on 2.22.0 through 2.22.2 it completes forward object-id references in
-// time quadratic in their number (GHSA-cxp5-3px4-pw24), and retains every unknown raw type id it
-// is handed (GHSA-wv8q-qhhj-9h54).
-//
-// Those two are the binding ones, and they are why the first is not the number to read off this
-// comment: the lowest this pin may state is 2.18.11, anything chosen on the 2.19-2.21 lines must be
-// 2.21.7 or above, and anything on the 2.22 line must be 2.22.3 or above. 2.22.3 is the head of the
-// Jackson 2 line and the version platform and acumen pin, so a consumer that pins too resolves one
-// Jackson rather than two.
-//
-// This governs THIS build's resolution only -- sbt writes no `dependencyOverrides` into the
-// published POM -- so it decides what this repo compiles and tests against and imposes no floor on
-// a consumer. A consumer states its own, as platform and acumen do.
-//
-// jackson-annotations publishes no patch versions on its 2.20+ lines (maven-metadata.xml runs
-// 2.19.4, 2.20, 2.21, 2.22), so it carries its own version and a patch number there is a 404 that
-// fails the whole resolution.
-lazy val jacksonVersion = "2.22.3"
-lazy val jacksonAnnotationsVersion = "2.22"
-
-ThisBuild / dependencyOverrides ++= Seq(
-  "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
-  "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
-  "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonAnnotationsVersion,
-  "com.fasterxml.jackson.dataformat" % "jackson-dataformat-cbor" % jacksonVersion,
-  "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % jacksonVersion,
-  "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % jacksonVersion,
-  "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % jacksonVersion,
-  "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion,
-)
-
-// Jackson 3 -- the `tools.jackson` coordinates -- resolves to one version too. It is a separate
-// family from the `com.fasterxml.jackson` one above rather than a newer release of it, and the two
-// coexist here: the packages differ, so neither shadows the other and conflict resolution never
-// puts them in the same bucket. Jackson 3's databind still depends on the 2.x
-// `com.fasterxml.jackson.core:jackson-annotations` -- there is no `tools.jackson.core`
-// annotations artifact -- and the 3.1 line asks for 2.21, which the annotations pin above already
-// satisfies.
-//
-// It arrives through net.logstash.logback:logstash-logback-encoder, whose 9.0 release moved its
-// JSON encoding to Jackson 3 and declares tools.jackson.core:jackson-databind at compile scope;
-// databind brings tools.jackson.core:jackson-core with it. Those two are the whole of Jackson 3 on
-// this classpath, so unlike the family above there is nothing else to hold in lockstep: the
-// encoder's cbor, smile and yaml dataformat dependencies are declared `optional` and resolve
-// nowhere. Enabling one of the decorators that needs one means declaring that artifact here at
-// this version, not inheriting whatever the encoder's POM names.
-//
-// The floor is a security one and two advisories set it, one on each artifact. jackson-core below
-// 3.1.4 applies maxNumberLength to the digits within each chunk fed to the non-blocking parser
-// rather than to the number accumulated across feeds, so a number split across `feedInput` calls
-// is not bounded at all and no chunk ever has to exceed the limit (GHSA-r7wm-3cxj-wff9).
-// jackson-databind below 3.1.5 replays a `@JsonUnwrapped` property's buffered JSON without asking
-// whether that property is visible in the active view, so a property a write path excluded with
-// `@JsonView` is populated from the document anyway (GHSA-5gvw-p9qm-jgwh).
-//
-// jackson-databind below 3.1.6 carries three more: `DefaultBaseTypeLimitingValidator` leaves
-// `Comparable` off the base types it refuses, so polymorphic typing declared against one admits
-// any subtype (GHSA-gx83-3vf8-gh7j); `Duration` and `XMLGregorianCalendar` deserialization parse a
-// number of unbounded length (GHSA-q4xh-88c3-wmh7); and `Path` deserialization resolves whatever
-// `FileSystemProvider` scheme the document names rather than an allowlist (GHSA-wjgm-6hv5-3cvf).
-//
-// jackson-databind below 3.1.7 carries two more: it completes forward object-id references in
-// time quadratic in their number (GHSA-cxp5-3px4-pw24), and retains every unknown raw type id it is
-// handed (GHSA-wv8q-qhhj-9h54).
-//
-// Databind's is the binding one, so 3.1.7 is the lowest this pin may state, and it is what it
-// states. The 3.2 line clears all of them from 3.2.3 and is deliberately not what this pin states: it is
-// a further minor line above what the encoder was compiled against, and the encoder reaches
-// Jackson only through internal SPI that a minor line is free to move.
-// `Jackson3PinSpec` asserts each of those two limits behaviourally, so a pin that slips below the
-// floor fails there by name; `KeyValueLoggerBuilderSpec` encodes a real logging event through
-// `LogstashEncoder`, which is what observes that the encoder still links against whatever this
-// resolves.
-lazy val jackson3Version = "3.1.7"
-
-ThisBuild / dependencyOverrides ++= Seq(
-  "tools.jackson.core" % "jackson-databind" % jackson3Version,
-  "tools.jackson.core" % "jackson-core" % jackson3Version,
-)
+// Applied as `dependencyOverrides`, which governs THIS build's resolution only -- sbt writes none
+// of it into the published POM -- so it decides what this repo compiles and tests against and
+// imposes no floor on a consumer. Jackson 3 is on this classpath through
+// logstash-logback-encoder 9; logback is test-scope only.
+ThisBuild / dependencyOverrides ++= BryzekPins.jackson2 ++ BryzekPins.jackson3 ++ BryzekPins.logback
 
 // Keep the unused browser-automation stack off the test classpath.
 //
@@ -250,7 +149,7 @@ lazy val root = project
       // the version each consumer already pins is what binds.
       "net.logstash.logback" % "logstash-logback-encoder" % "9.0",
       "org.playframework" %% "play-json" % "3.0.6",
-      "ch.qos.logback" % "logback-classic" % "1.6.5" % Test,
+      "ch.qos.logback" % "logback-classic" % BryzekPins.logbackVersion % Test,
       // org.lz4:lz4-java reaches the test classpath only here, transitively:
       // scalatestplus-play -> play-ws -> play -> pekko-serialization-jackson -> lz4-java.
       // Nothing on that classpath can call it. Pekko loads an LZ4 codec reflectively only when
