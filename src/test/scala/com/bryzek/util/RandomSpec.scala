@@ -43,8 +43,13 @@ class RandomSpec extends AnyWordSpec with Matchers {
     multiCount(_.nonAmbiguousAlphaUpper(10)) mustBe 100
   }
 
+  /** Only 4 digits are non-ambiguous, so 100 distinct draws need a long value: at length 10 there are 4^10 (~1e6)
+    * outcomes and a birthday collision fails ~1 run in 210; at 20 there are 4^20 (~1.1e12) and it is ~4.5e-9.
+    */
   "nonAmbiguousNumber" in {
-    multiCount(_.nonAmbiguousNumber(10)) mustBe 100
+    random.nonAmbiguousNumber(10).length mustBe 10
+    random.nonAmbiguousNumber(1000).split("").distinct.sorted.mkString mustBe "3479"
+    multiCount(_.nonAmbiguousNumber(20)) mustBe 100
   }
 
   "nonAmbiguous" in {
