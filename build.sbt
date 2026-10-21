@@ -130,7 +130,7 @@ lazy val root = project
     scalacOptions ++= allScalacOptions,
     libraryDependencies ++= Seq(
       "com.github.tototoshi" %% "scala-csv" % "2.0.0",
-      "commons-codec" % "commons-codec" % "1.22.1",
+      "commons-codec" % "commons-codec" % "1.23.0",
       "joda-time" % "joda-time" % "2.15.0",
       "org.typelevel" %% "cats-core" % "2.13.0",
       // API only — every consumer already brings its own binding (logback, through Play). Declared
