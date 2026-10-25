@@ -177,7 +177,7 @@ object BryzekPins {
   // How a build applies it is its own decision, stated in its build.sbt: a lib that never loads
   // logback outside its suite overrides it, so no logback edge reaches its POM; a lib that puts
   // logback on its consumers' classpath (through Play) DECLARES it, so the floor reaches them.
-  val logbackVersion = "1.6.5"
+  val logbackVersion = "1.6.6"
 
   val logback: Seq[ModuleID] = Seq(
     "ch.qos.logback" % "logback-classic" % logbackVersion,
