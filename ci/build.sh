@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 #
 # lib-util's build (ISS-2173). READ devops/templates/ci/build.sh AND
-# devops/docs/ci.md FIRST: the four load-bearing properties — landing this file
-# IS the enrolment, `set -euo pipefail` is not style, the fleet posts the `ci`
-# context, and `# ci-needs:` drives the preflight — are explained there and are
-# unchanged here.
+# devops/docs/ci.md FIRST: the three load-bearing properties — landing this file
+# IS the enrolment, `set -euo pipefail` is not style, and the fleet posts the
+# `ci` context — are explained there and are unchanged here.
 #
 # WHAT A GREEN HERE VOUCHES FOR: this library's own sources compile under
 # `-Werror` with the full `-Wunused` set and its own ScalaTest suite passes, on
@@ -39,16 +38,14 @@
 # which nothing else formats) prints every unformatted file and exits 0. The
 # hygiene sweep runs it over `main` and fixes what it finds.
 #
-# `# ci-needs: heap:4G` — MEASURED, not copied (ISS-1171's method, run
+# `-Xmx4G` in `.jvmopts` — MEASURED, not copied (ISS-1171's method, run
 # 2026-08-11). Cold checkout, `SBT_OPTS="-Xmx4G -Xss4M"`, process-tree RSS
 # sampled with `/bin/ps -axo pid=,ppid=,rss=`: peak 1.2 GB, exit 0, 89 tests
 # passed. 4G is `Agent::Heap::MIN_GB` — the least any runner hands a build, so
-# nothing below it is worth measuring and this excludes no machine. The token is
-# here rather than omitted because an omission is indistinguishable from nobody
-# having looked. `Test / fork` is false in this build, so `SBT_OPTS` is the whole
-# ceiling and there is no forked test JVM outside it to pin.
-#
-# ci-needs: heap:4G
+# nothing below it is worth measuring. The file is here rather than omitted
+# because an omission is indistinguishable from nobody having looked.
+# `Test / fork` is false in this build, so `SBT_OPTS` is the whole ceiling and
+# there is no forked test JVM outside it to pin.
 #
 # TEST HEALTH READS THE NEXT TWO LINES (ISS-19887, design DES-18577 "Every repository
 # with CI"). The first is where sbt leaves a JUnit report per suite, which is what the
