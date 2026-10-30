@@ -33,6 +33,19 @@ ThisBuild / scalaVersion := "3.8.4"
 // logstash-logback-encoder 9; logback is test-scope only.
 ThisBuild / dependencyOverrides ++= BryzekPins.jackson2 ++ BryzekPins.jackson3 ++ BryzekPins.logback
 
+// com.google.guava:guava resolves to 33.7.2-jre or above, in every subproject.
+//
+// Below 33.7.2 CompactHashMap, CompactHashSet and MapMakerInternalMap trust the size a serialized
+// stream states and allocate their backing arrays from it before reading a single element, so a
+// small hostile payload handed to Java deserialization makes the JVM allocate whatever it names and
+// die of OutOfMemoryError rather than reject the stream (GHSA-xxph-c9ww-hj94).
+//
+// It is not declared anywhere in this build: play-test_3, which `scalatestplus-play % Test` brings,
+// depends on it directly and pins 32.1.3-jre, so an override is the only thing that moves it and
+// there is no `libraryDependencies` line to edit instead. Drop this pin once the Play version this
+// build resolves ships a guava at or above 33.7.2 of its own.
+ThisBuild / dependencyOverrides += "com.google.guava" % "guava" % "33.7.2-jre"
+
 // Keep the unused browser-automation stack off the test classpath.
 //
 // It arrives by two transitive routes -- play-test -> io.fluentlenium:fluentlenium-core, and
