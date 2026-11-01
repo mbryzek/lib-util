@@ -74,10 +74,15 @@ echo "building ${CI_REPO:-?} @ ${CI_SHA:-?} (${CI_EVENT:-?}, clean=${CI_CLEAN_BU
 # and one that fails twice exits 75 -- this box could not measure the copy, which says nothing
 # about the branch.
 #
+# THE SHARED BUILD SETTINGS ARE OWNED THE SAME WAY (ISS-37530): project/BryzekLibSettings.scala
+# holds the publishing metadata, the guava pin, the browser-stack exclusions, the compiler gate and
+# the test reporting every lib-* build.sbt wires in, so a change to any of them is one edit there.
+#
 # THE TEST HEALTH RUNNER IS OWNED THE SAME WAY (ISS-19887): templates/sbt-test-health holds the
 # lists filter, the rerun and the shell half every sbt repository runs its suite through.
 synced=(
   "scala-libs/project/BryzekPins.scala project/BryzekPins.scala"
+  "scala-libs/project/BryzekLibSettings.scala project/BryzekLibSettings.scala"
   "scala-libs/test/JacksonPinSpec.scala src/test/scala/com/bryzek/pins/JacksonPinSpec.scala"
   "scala-libs/test/Jackson3PinSpec.scala src/test/scala/com/bryzek/pins/Jackson3PinSpec.scala"
   "scala-libs/test/LogbackPinSpec.scala src/test/scala/com/bryzek/pins/LogbackPinSpec.scala"
