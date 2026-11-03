@@ -12,12 +12,13 @@
 # WHAT IT DOES NOT VOUCH FOR, and this is the important half: THAT ANY CONSUMER
 # STILL COMPILES. Nothing in the fleet builds `platform` or `acumen` against a
 # lib PR's tree. A consumer resolves a RELEASED version out of Maven Central
-# (`"com.bryzek" %% "lib-util" % "0.0.40"`), and no released version exists until
-# a human runs `dev release lib` — which prompts and shells out to GPG, so a
-# merge here publishes nothing. So a PR that removes a method is green here and
-# breaks platform at the moment somebody bumps the pin. That break surfaces in
-# the CONSUMER's own version-bump PR, verified by the consumer's own `ci`, which
-# is where `dev release lib` and `Agent::LibraryPin` already put it. Enrolling
+# (`"com.bryzek" %% "lib-util" % "0.0.40"`), and a merge here publishes nothing:
+# a released version exists only once the library's rollout
+# (`dev rollout --app lib-util`) publishes it, signing headlessly on a runner.
+# So a PR that removes a method is green here and breaks platform at the moment
+# somebody bumps the pin. That break surfaces in the CONSUMER's own version-bump
+# PR, verified by the consumer's own `ci`, which is where the release and
+# `Agent::LibraryPin` already put it. Enrolling
 # this repo narrows nothing about that and is not meant to.
 #
 # NO DATABASE BLOCK, and that is the whole difference from
