@@ -1,6 +1,6 @@
 name := "lib-util"
 
-version := "0.0.78"
+version := "0.0.79"
 
 // Publishing metadata, the guava pin, the browser-stack exclusions, the compiler gate and the
 // root project's test reporting are shared by every lib-* repository and DECLARED in
