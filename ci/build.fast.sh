@@ -99,12 +99,12 @@ for pair in "${synced[@]}"; do
   dev repo cat devops "templates/$template" >"$template_bytes" ||
     dev repo cat devops "templates/$template" >"$template_bytes" || read_rc=$?
   if [ "$read_rc" -ne 0 ]; then
-    echo "ci/build.sh: could not read devops templates/$template (dev repo cat exit $read_rc, twice) -- a read failure, not a drift in $copy; nothing was measured" >&2
+    echo "ci/build.fast.sh: could not read devops templates/$template (dev repo cat exit $read_rc, twice) -- a read failure, not a drift in $copy; nothing was measured" >&2
     rm -f "$template_bytes"
     exit 75
   fi
   if ! diff -u "$template_bytes" "$copy"; then
-    echo "ci/build.sh: sync it -- dev repo cat devops templates/$template > $copy" >&2
+    echo "ci/build.fast.sh: sync it -- dev repo cat devops templates/$template > $copy" >&2
     rm -f "$template_bytes"
     exit 1
   fi
