@@ -3,18 +3,18 @@ name := "lib-util"
 version := "0.0.81"
 
 // Publishing metadata, the guava pin, the browser-stack exclusions, the compiler gate and the
-// root project's test reporting are shared by every lib-* repository and DECLARED in
-// project/BryzekLibSettings.scala, a copy of devops's
-// templates/scala-libs/project/BryzekLibSettings.scala that ci/build.fast.sh holds byte-identical to
-// it. That file carries why each setting is what it is; a change is edited there and copied here.
+// root project's test reporting are shared by every lib-* repository: BryzekLibSettings, from
+// lib-build-sbt (project/plugins.sbt). That library carries why each setting is what it is.
 BryzekLibSettings.buildSettings("lib-util")
 
 ThisBuild / scalaVersion := "3.10.0"
 
-// The Jackson 2, Jackson 3 and logback security pins are DECLARED in project/BryzekPins.scala, a
-// copy of devops's templates/scala-libs/project/BryzekPins.scala that ci/build.fast.sh holds
-// byte-identical to it, together with the pin specs under src/test/scala/com/bryzek/pins. That
-// file carries why each floor is what it is; an advisory bump is edited there and copied here.
+// lib-build-testkit is published to the fleet's own Maven repository.
+ThisBuild / resolvers += "Bryzek Maven repository" at "https://maven.bryzek.com"
+
+// The Jackson 2, Jackson 3 and logback security pins are BryzekPins, from lib-build-sbt
+// (project/plugins.sbt), asserted by the pin specs under src/test/scala/com/bryzek/pins, each a
+// subclass of a lib-build-testkit suite. lib-build carries why each floor is what it is.
 //
 // Applied as `dependencyOverrides`, which governs THIS build's resolution only -- sbt writes none
 // of it into the published POM -- so it decides what this repo compiles and tests against and
@@ -48,6 +48,9 @@ lazy val root = project
       "net.logstash.logback" % "logstash-logback-encoder" % "9.0",
       "org.playframework" %% "play-json" % "3.0.6",
       "ch.qos.logback" % "logback-classic" % BryzekPins.logbackVersion % Test,
+      // The pin suites src/test/scala/com/bryzek/pins subclasses. Every dependency it declares is
+      // Provided, so each suite asserts the versions this build resolves.
+      "com.bryzek" %% "lib-build-testkit" % "0.0.1" % Test,
       // org.lz4:lz4-java reaches the test classpath only here, transitively:
       // scalatestplus-play -> play-ws -> play -> pekko-serialization-jackson -> lz4-java.
       // Nothing on that classpath can call it. Pekko loads an LZ4 codec reflectively only when
