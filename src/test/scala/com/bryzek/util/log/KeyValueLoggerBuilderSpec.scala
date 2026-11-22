@@ -65,6 +65,14 @@ class KeyValueLoggerBuilderSpec extends AnyWordSpec with Matchers {
         .render("failed", Some(new RuntimeException("boom"))) mustBe "failed boom a: 1"
     }
 
+    "append the boxed cause rather than the box a Future failed with" in {
+      val boxed = new java.util.concurrent.ExecutionException(
+        "Boxed Exception",
+        new NotImplementedError("Not implemented: POST /x")
+      )
+      builder.render("failed", Some(boxed)) mustBe "failed scala.NotImplementedError: Not implemented: POST /x"
+    }
+
     "render every scalar type through the same key value" in {
       builder
         .withKeyValue("bool", true)
