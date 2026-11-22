@@ -14,7 +14,7 @@ ThisBuild / resolvers += "Bryzek Maven repository" at "https://maven.bryzek.com"
 
 // The Jackson 2, Jackson 3 and logback security pins are BryzekPins, from scala-build-sbt
 // (project/plugins.sbt), asserted by the pin specs under src/test/scala/com/bryzek/pins, each a
-// subclass of a scala-build-testkit suite. lib-build carries why each floor is what it is.
+// subclass of a scala-build-testkit suite. scala-build carries why each floor is what it is.
 //
 // Applied as `dependencyOverrides`, which governs THIS build's resolution only -- sbt writes none
 // of it into the published POM -- so it decides what this repo compiles and tests against and
