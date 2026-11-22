@@ -141,7 +141,8 @@ case class KeyValueLoggerBuilder(
     }
   }
 
-  /** The emitted line: the message, then the throwable's MESSAGE when there is one, then every
+  /** The emitted line: the message, then the throwable's [[FailureMessage]] when there is one (the
+    * boxed cause's class and message for a Future's `ExecutionException`, never "Boxed Exception"), then every
     * key/value sorted by key and joined with `", "`.
     *
     * Public because the sort and the join are the contract the LogsQL in the memory and
@@ -157,7 +158,7 @@ case class KeyValueLoggerBuilder(
   override def render(msg: String, ex: Option[Throwable]): String = {
     val exMsg = ex match {
       case None => ""
-      case Some(e) => s" ${e.getMessage}"
+      case Some(e) => s" ${FailureMessage.of(e)}"
     }
     val sb = new StringBuilder()
     sb.append(s"$msg$exMsg")
