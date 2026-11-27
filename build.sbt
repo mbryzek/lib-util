@@ -50,7 +50,7 @@ lazy val root = project
       "ch.qos.logback" % "logback-classic" % BryzekPins.logbackVersion % Test,
       // The pin suites src/test/scala/com/bryzek/pins subclasses. Every dependency it declares is
       // Provided, so each suite asserts the versions this build resolves.
-      "com.bryzek" %% "scala-build-testkit" % "0.0.31" % Test,
+      "com.bryzek" %% "scala-build-testkit" % "0.0.33" % Test,
       // org.lz4:lz4-java reaches the test classpath only here, transitively:
       // scalatestplus-play -> play-ws -> play -> pekko-serialization-jackson -> lz4-java.
       // Nothing on that classpath can call it. Pekko loads an LZ4 codec reflectively only when

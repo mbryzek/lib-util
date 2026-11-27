@@ -6,4 +6,4 @@ addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.3.1")
 // BryzekPins, BryzekLibSettings and the test-health plugins (CiTestListsPlugin,
 // CiTestRerunPlugin), shared by every Scala build: https://github.com/mbryzek/scala-build
 resolvers += "Bryzek Maven repository" at "https://maven.bryzek.com"
-libraryDependencies += "com.bryzek" %% "scala-build-sbt" % "0.0.31"
+libraryDependencies += "com.bryzek" %% "scala-build-sbt" % "0.0.33"
