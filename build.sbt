@@ -1,6 +1,6 @@
 name := "lib-util"
 
-version := "0.0.92"
+version := "0.0.93"
 
 // Publishing metadata, the guava pin, the browser-stack exclusions, the compiler gate and the
 // root project's test reporting are shared by every lib-* repository: BryzekLibSettings, from
